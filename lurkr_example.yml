@@ -1,0 +1,54 @@
+general:
+  dry_run: true
+  debug: false
+
+log:
+  level: debug
+  force_colours: true
+  disable_colours: false
+  report_caller: false
+  full_timestap: false
+
+transport_file: &default_transport
+  default:
+    dest: /watch
+
+transport_sftp:
+  default:
+    address: 10.0.0.1:22
+    username: username
+    password:
+    key: ~/.ssh/id_rsa
+    path: /watch
+
+sources:
+  irc:
+    - name: redacted
+      username: username
+      nick: nickname
+      password: "password"
+      address: irc.server.com:7000
+      ssl: true
+      ssl_verify: false
+      channels: [ "#red-announce" ]
+      bot_name: Drone
+      bot_who: Drone@127.0.0.1
+      auth: "your_api_key"
+      transport_name: default
+      transport_type: sftp
+
+    - name: revolutiontt
+      username: username
+      nick: nick
+      password: "password"
+      address: irc.server.com:7000
+      ssl: true
+      ssl_verify: false
+      channels: [ "#announce"]
+      bot_name: RevoTT
+      bot_who: RevoTT@Revo.lutionTT
+      auth: "username:password"
+      transport_name: default
+      transport_type: file
+
+  rss:
