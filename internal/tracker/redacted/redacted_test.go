@@ -1,17 +1,19 @@
 package redacted
 
 import (
+	"github.com/leighmacdonald/golib"
 	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/leighmacdonald/lurkr/internal/parser"
 	"github.com/leighmacdonald/lurkr/internal/tracker"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
 var tests = []tracker.TestData{
 	{
 		Msg: "Various Artists - Elysian Vibes 5 [2001] [Compilation] - MP3 / 320 / CD - " +
-			"https://redacted.ch/torrents.php?id=1440357 / " +
+			"https://redacted.ch/torrents.php?id=3063049 / " +
 			"https://redacted.ch/torrents.php?action=download&id=3063049 - " +
 			"electronic, folk, country, ambient, dub, world.music, downtempo",
 		Res: &parser.Result{
@@ -29,7 +31,14 @@ var tests = []tracker.TestData{
 }
 
 func TestRedacted(t *testing.T) {
-	tkr, err := New(&config.TrackerConfig{})
+	tkr, err := New(config.Tracker(driverName))
 	require.NoErrorf(t, err, "Invalid tracker configuration: %s", driverName)
 	tracker.TestTracker(t, tkr, tests)
+}
+
+func TestMain(m *testing.M) {
+	if err := config.Read(golib.FindFile("lurkr.yml", "lurkr")); err != nil {
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
 }

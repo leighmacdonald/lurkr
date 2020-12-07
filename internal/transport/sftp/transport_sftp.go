@@ -11,6 +11,7 @@ import (
 )
 
 type sftpTransport struct {
+	cfg    *config.SFTPConfig
 	client *sftp.Client
 }
 
@@ -37,7 +38,7 @@ func NewSFTPTransport(cfg *config.SFTPConfig) (*sftpTransport, error) {
 			signer ssh.Signer
 			errKey error
 		)
-		if cfg.Password != "" {
+		if cfg.Password == "" {
 			signer, errKey = ssh.ParsePrivateKey(key)
 			if errKey != nil {
 				return nil, errors.Wrapf(errKey, "Failed to parse private key")
@@ -52,14 +53,13 @@ func NewSFTPTransport(cfg *config.SFTPConfig) (*sftpTransport, error) {
 	} else {
 		authMethods = append(authMethods, ssh.Password(string(cfg.Password)))
 	}
-	config := &ssh.ClientConfig{
+	conn, err := ssh.Dial("tcp", cfg.Address, &ssh.ClientConfig{
 		User: cfg.Username,
 		Auth: authMethods,
 		// TODO: Check host key if requested
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		//Ciphers: []string{"3des-cbc", "aes256-cbc", "aes192-cbc", "aes128-cbc"},
-	}
-	conn, err := ssh.Dial("tcp", cfg.Address, config)
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to connect to ssh server")
 	}
@@ -67,5 +67,5 @@ func NewSFTPTransport(cfg *config.SFTPConfig) (*sftpTransport, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to create SFTP client")
 	}
-	return &sftpTransport{client: client}, nil
+	return &sftpTransport{client: client, cfg: cfg}, nil
 }

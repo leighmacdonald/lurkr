@@ -13,10 +13,18 @@ var (
 	ErrInvalidAuth   = errors.New("Invalid auth value")
 )
 
+type TransportType string
+
+const (
+	Filesystem TransportType = "filesystem"
+	SFTP       TransportType = "sftp"
+)
+
 type rootConfig struct {
 	General       GeneralConfig               `mapstructure:"general"`
 	Logs          LogConfig                   `mapstructure:"log"`
 	Source        SourcesConfig               `mapstructure:"sources"`
+	Watch         map[string]WatchConfig      `mapstructure:"watch"`
 	TransportSFTP map[string]SFTPConfig       `mapstructure:"transport_sftp"`
 	TransportFile map[string]FileSystemConfig `mapstructure:"transport_file"`
 }
@@ -40,7 +48,7 @@ type LogConfig struct {
 }
 
 type FileSystemConfig struct {
-	Dest string `mapstructure:"dest"`
+	Path string `mapstructure:"path"`
 }
 
 type SFTPConfig struct {
@@ -51,21 +59,44 @@ type SFTPConfig struct {
 	Path     string `mapstructure:"path"`
 }
 
+type WatchConfig struct {
+	Path          string        `mapstructure:"path"`
+	TransportName string        `mapstructure:"transport_name"`
+	TransportType TransportType `mapstructure:"transport_type"`
+}
+
 type TrackerConfig struct {
-	Name          string   `mapstructure:"name"`
-	Nick          string   `mapstructure:"nick"`
-	Username      string   `mapstructure:"username"`
-	Password      string   `mapstructure:"password"`
-	Perform       []string `mapstructure:"perform"`
-	Address       string   `mapstructure:"address"`
-	SSL           bool     `mapstructure:"ssl"`
-	SSLVerify     bool     `mapstructure:"ssl_verify"`
-	Channels      []string `mapstructure:"channels"`
-	BotName       string   `mapstructure:"bot_name"`
-	BotWho        string   `mapstructure:"bot_who"`
-	Auth          string   `mapstructure:"auth"`
-	TransportName string   `mapstructure:"transport_name"`
-	TransportType string   `mapstructure:"transport_type"`
+	// Name of the tracker, should match the driverName of the tracker
+	Name string `mapstructure:"name"`
+	// Nick is your IRC nick, usually the same as your username
+	Nick string `mapstructure:"nick"`
+	// Username is your site username
+	Username string `mapstructure:"username"`
+	// Password is your **IRC** password
+	Password string `mapstructure:"password"`
+	// Perform is a list of commands to run after connecting to IRC such as Nickserv identification, Invite bots, etc.
+	Perform []string `mapstructure:"perform"`
+	Address string   `mapstructure:"address"`
+	// SSL enables SSL IRC Connections
+	SSL bool `mapstructure:"ssl"`
+	// SSLVerify will enforce valid SSL certificates on the IRC server connection
+	SSLVerify bool `mapstructure:"ssl_verify"`
+	// Channels to listen to announce events eg:  ["#announce", "#tv-announce"]
+	Channels []string `mapstructure:"channels"`
+	// BotName is the nick of the announce bot
+	BotName string `mapstructure:"bot_name"`
+	// BotWho is the whois info for the announce bot
+	BotWho string `mapstructure:"bot_who"`
+	// Auth can be several things depending on the tracker:
+	// username:password - for sites that dont have a real API, use your standard username and password when logging in
+	// api_key - For sites that provides a API for downloading
+	Auth string `mapstructure:"auth"`
+	// Passkey is your torrent passkey, some sites require this when downloading the .torrent
+	Passkey string `mapstructure:"passkey"`
+	// TransportName should refer to one of the transport names defined in the config file
+	TransportName string `mapstructure:"transport_name"`
+	// TransportType should refer to one of the transport types defined in the config file
+	TransportType string `mapstructure:"transport_type"`
 }
 
 func Tracker(tracker string) *TrackerConfig {
@@ -75,6 +106,22 @@ func Tracker(tracker string) *TrackerConfig {
 		}
 	}
 	return nil
+}
+
+func TransportConfigSFTP(transportName string) (*SFTPConfig, error) {
+	v, ok := TransportSFTP[transportName]
+	if !ok {
+		return nil, errors.New("Invalid config key")
+	}
+	return &v, nil
+}
+
+func TransportConfigFile(transportName string) (*FileSystemConfig, error) {
+	v, ok := TransportFile[transportName]
+	if !ok {
+		return nil, errors.New("Invalid config key")
+	}
+	return &v, nil
 }
 
 var (
@@ -94,10 +141,10 @@ var (
 		IRC: nil,
 		RSS: nil,
 	}
+	Watch = map[string]WatchConfig{}
+
 	TransportSFTP = map[string]SFTPConfig{}
-	TransportFS   = map[string]FileSystemConfig{
-		"default": {Dest: "/watch"},
-	}
+	TransportFile = map[string]FileSystemConfig{}
 )
 
 // Read reads in config file and ENV variables if set.
@@ -128,7 +175,8 @@ func Read(cfgFile string) error {
 	Logs = cfg.Logs
 	Sources = cfg.Source
 	TransportSFTP = cfg.TransportSFTP
-	TransportFS = cfg.TransportFile
+	TransportFile = cfg.TransportFile
+	Watch = cfg.Watch
 	configureLogger(log.StandardLogger())
 	log.Infof("Using config file: %s", viper.ConfigFileUsed())
 	return nil

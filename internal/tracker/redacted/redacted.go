@@ -1,12 +1,11 @@
 package redacted
 
 import (
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/leighmacdonald/lurkr/internal/parser"
-	"github.com/leighmacdonald/lurkr/internal/torrent"
 	"github.com/leighmacdonald/lurkr/internal/tracker"
 	"github.com/leighmacdonald/lurkr/pkg/transform"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -16,23 +15,23 @@ import (
 
 const driverName = "redacted"
 
-type RED struct {
+type Driver struct {
 	rxRelease *regexp.Regexp
 	client    *http.Client
 	baseURL   string
 	cfg       *config.TrackerConfig
 }
 
-func (p RED) Name() string {
+func (p Driver) Name() string {
 	return driverName
 }
 
-func (p RED) Login() error {
+func (p Driver) Login() error {
 	// Uses API Token
 	return nil
 }
 
-func (p RED) Download(result *parser.Result) (*torrent.File, error) {
+func (p Driver) Download(result *parser.Result) (*metainfo.MetaInfo, error) {
 	u, err := url.Parse(p.baseURL)
 	if err != nil {
 		return nil, err
@@ -54,16 +53,16 @@ func (p RED) Download(result *parser.Result) (*torrent.File, error) {
 	if err2 != nil {
 		return nil, err2
 	}
-	var tf torrent.File
-	if err3 := torrent.Decode(resp.Body, &tf); err3 != nil {
-		return nil, errors.Wrapf(err3, "Failed to decode downloaded torrent")
+	mi, err := metainfo.Load(resp.Body)
+	if err != nil {
+		return nil, tracker.ErrDownload
 	}
 	defer resp.Body.Close()
-	return &tf, nil
+	return mi, nil
 }
 
-func (p RED) ParseMessage(message string) (*parser.Result, error) {
-	result := &parser.Result{Tracker: p.cfg.Name}
+func (p Driver) ParseMessage(message string) (*parser.Result, error) {
+	result := parser.NewResult(driverName)
 	args := strings.Split(message, " - ")
 	if len(args) != 5 {
 		return nil, parser.ErrCannotParse
@@ -95,7 +94,8 @@ func (p RED) ParseMessage(message string) (*parser.Result, error) {
 }
 
 func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
-	return &RED{
+	return &Driver{
+		cfg:     trackerConfig,
 		baseURL: "https://redacted.ch/ajax.php",
 		client: &http.Client{
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {

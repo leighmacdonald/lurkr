@@ -1,6 +1,7 @@
-package revolutiontt
+package broadcasthenet
 
 import (
+	"fmt"
 	"github.com/leighmacdonald/golib"
 	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/leighmacdonald/lurkr/internal/parser"
@@ -12,27 +13,29 @@ import (
 
 var tests = []tracker.TestData{
 	{
-		Msg: "!new Ellen.DeGeneres.2020.12.01.Justin.Bieber.720p.HDTV.x264-60FPS | " +
-			"TV/HDx264 | " +
-			"https://revolutiontt.me/details.php?id=ePZ7mjh3&hit=1",
+		Msg: "Ancient Aliens | S16E03 | Episode | 2020 | MKV | H.264 | WEB-DL | SD | Yes | Yes | " +
+			"1390732 | Anonymous | English | Ancient.Aliens.S16E03.WEB.h264-BAE",
 		Res: &parser.Result{
-			Tracker:  "revolutiontt",
-			Name:     "Ellen DeGeneres 2020 12 01 Justin Bieber",
+			Tracker:  driverName,
+			Name:     "Ancient Aliens",
 			SubName:  "",
-			LinkSite: "https://revolutiontt.me/details.php?id=ePZ7mjh3&hit=1",
-			LinkDL:   "",
+			Group:    "BAE",
+			LinkSite: "https://broadcasthe.net/torrents.php?torrentid=1390732",
+			LinkDL: fmt.Sprintf(
+				"https://broadcasthe.net/torrents.php?action=download&id=1390732&authkey=%s&torrent_pass=%s",
+				tracker.AuthKeyToken, tracker.PasskeyToken),
 			Year:     2020,
+			Season:   16,
+			Episode:  3,
 			Category: parser.TV,
-			Tags:     []string{"hdx264"},
+			Tags:     []string{},
 			Formats:  []string{},
 		},
-		Err:     nil,
-		Size:    1665820034,
-		HashStr: "ffaa0efa86220b5065c3b5b9887a3d9764e07215",
+		Err: nil,
 	},
 }
 
-func TestRevolutionTT(t *testing.T) {
+func TestBroadcasthenet(t *testing.T) {
 	tkr, err := New(config.Tracker(driverName))
 	require.NoErrorf(t, err, "Invalid tracker configuration: %s", driverName)
 	tracker.TestTracker(t, tkr, tests)

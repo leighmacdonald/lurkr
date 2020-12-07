@@ -2,15 +2,15 @@ package revolutiontt
 
 import (
 	"fmt"
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/cytec/releaseparser"
 	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/leighmacdonald/lurkr/internal/parser"
-	"github.com/leighmacdonald/lurkr/internal/torrent"
 	"github.com/leighmacdonald/lurkr/internal/tracker"
+	"github.com/leighmacdonald/lurkr/internal/transport"
 	"github.com/leighmacdonald/lurkr/pkg/transform"
 	"github.com/pkg/errors"
 	"golang.org/x/net/publicsuffix"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -19,7 +19,7 @@ import (
 
 const driverName = "revolutiontt"
 
-type RevTT struct {
+type Driver struct {
 	baseURL  string
 	username string
 	password string
@@ -27,39 +27,41 @@ type RevTT struct {
 	client   *http.Client
 }
 
-func (p RevTT) Name() string {
+func (p Driver) Name() string {
 	return driverName
 }
 
-func (p RevTT) Download(result *parser.Result) (*torrent.File, error) {
-	req, err := http.NewRequest("GET", result.LinkSite, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err2 := p.client.Do(req)
-	if err2 != nil {
-		return nil, err2
-	}
-	_, err3 := ioutil.ReadAll(resp.Body)
-	if err3 != nil {
-		return nil, err3
-	}
-	defer resp.Body.Close()
-	return nil, nil
+func (p Driver) Download(result *parser.Result) (*metainfo.MetaInfo, error) {
+	return transport.FetchTorrent(p.client, result.LinkDL)
 }
 
-func (p RevTT) ParseMessage(message string) (*parser.Result, error) {
-	result := &parser.Result{}
+func (p Driver) ParseMessage(message string) (*parser.Result, error) {
+	result := parser.NewResult(driverName)
 	args := strings.Split(message, " | ")
-	result.Tags = transform.NormalizeStrings(strings.Split(args[1], "/"))
+	tags := transform.NormalizeStrings(strings.Split(args[1], "/"))
+	if len(tags) != 2 {
+		return nil, parser.ErrCannotParse
+	}
+	result.Category = parser.FindCategory(tags[0], nil)
+	result.Tags = tags[1:]
 	result.LinkSite = args[2]
 	parsed := releaseparser.Parse(strings.Replace(args[0], "!new ", "", -1))
 	result.Name = parsed.Title
-	result.Year = parsed.Year
-	return nil, parser.ErrCannotParse
+	if parsed.Year == 0 {
+		result.Year = transform.FindYear(parsed.Title)
+	} else {
+		result.Year = parsed.Year
+	}
+	u, err := url.Parse(result.LinkSite)
+	if err != nil {
+		return nil, parser.ErrCannotParse
+	}
+	tID := u.Query().Get("id")
+	result.LinkDL = fmt.Sprintf("https://revolutiontt.me/download.php/%s?passkey=%s", tID, p.cfg.Passkey)
+	return result, nil
 }
 
-func (p RevTT) Login() error {
+func (p Driver) Login() error {
 	// Login
 	// Get login page to acquire a session key first
 	resp, err := p.client.Get(fmt.Sprintf("%s/login.php", p.baseURL))
@@ -81,17 +83,20 @@ func (p RevTT) Login() error {
 	return nil
 }
 
-func New(cfg *config.TrackerConfig) (*RevTT, error) {
+func New(cfg *config.TrackerConfig) (*Driver, error) {
 	userInfo := strings.SplitN(cfg.Auth, ":", 2)
 	if len(userInfo) != 2 {
-		return nil, errors.New("Invalid credentials")
+		return nil, errors.Wrap(config.ErrInvalidConfig, "auth must be configured as username:password")
 	}
 	// Store cookie
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create cookiejar")
 	}
-	return &RevTT{
+	if cfg.Passkey == "" {
+		return nil, errors.Wrapf(config.ErrInvalidConfig, "Passkey must be set")
+	}
+	return &Driver{
 		baseURL:  `https://revolutiontt.me/`,
 		username: userInfo[0],
 		password: userInfo[1],

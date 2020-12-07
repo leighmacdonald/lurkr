@@ -32,3 +32,14 @@ func LowerStrings(stringSlice []string) []string {
 func NormalizeStrings(stringSlice []string) []string {
 	return LowerStrings(TrimStrings(stringSlice))
 }
+
+func FindYear(release string) int {
+	pcs := strings.Split(strings.Replace(release, ".", " ", -1), " ")
+	for _, p := range pcs {
+		year := ToInt(p)
+		if year > 1900 {
+			return year
+		}
+	}
+	return 0
+}

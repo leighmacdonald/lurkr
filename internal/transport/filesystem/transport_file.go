@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"github.com/leighmacdonald/golib"
+	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -10,6 +11,7 @@ import (
 )
 
 type fileTransport struct {
+	cfg *config.FileSystemConfig
 }
 
 func (t *fileTransport) Send(reader io.Reader, path string) error {
@@ -30,6 +32,8 @@ func (t *fileTransport) Send(reader io.Reader, path string) error {
 	return nil
 }
 
-func NewFileTransport() (*fileTransport, error) {
-	return &fileTransport{}, nil
+func NewFileTransport(config *config.FileSystemConfig) (*fileTransport, error) {
+	return &fileTransport{
+		cfg: config,
+	}, nil
 }

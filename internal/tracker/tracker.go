@@ -1,9 +1,9 @@
 package tracker
 
 import (
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/leighmacdonald/lurkr/internal/parser"
-	"github.com/leighmacdonald/lurkr/internal/torrent"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -15,7 +15,7 @@ type Driver interface {
 	ParseMessage(message string) (*parser.Result, error)
 
 	// Download the raw .torrent file to send to the configured transport
-	Download(result *parser.Result) (*torrent.File, error)
+	Download(result *parser.Result) (*metainfo.MetaInfo, error)
 
 	// Login to the site, if required
 	Login() error
@@ -31,6 +31,8 @@ type Initializer interface {
 var (
 	drivers   map[string]Initializer
 	driversMu *sync.RWMutex
+
+	ErrDownload = errors.New("Failed to download torrent")
 )
 
 // Register will register a driver as usable
