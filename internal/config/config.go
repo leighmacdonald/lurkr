@@ -30,8 +30,8 @@ type rootConfig struct {
 }
 
 type SourcesConfig struct {
-	IRC []TrackerConfig `mapstructure:"irc"`
-	RSS []TrackerConfig `mapstructure:"rss"`
+	IRC map[string]TrackerConfig `mapstructure:"irc"`
+	RSS map[string]TrackerConfig `mapstructure:"rss"`
 }
 
 type GeneralConfig struct {
@@ -96,32 +96,33 @@ type TrackerConfig struct {
 	// TransportName should refer to one of the transport names defined in the config file
 	TransportName string `mapstructure:"transport_name"`
 	// TransportType should refer to one of the transport types defined in the config file
-	TransportType string `mapstructure:"transport_type"`
+	TransportType string   `mapstructure:"transport_type"`
+	RSSFeeds      []string `mapstructure:"rss_feeds"`
 }
 
-func Tracker(tracker string) *TrackerConfig {
+func Tracker(tracker string) (TrackerConfig, error) {
 	for _, t := range Sources.IRC {
 		if strings.ToLower(t.Name) == strings.ToLower(tracker) {
-			return &t
+			return t, nil
 		}
 	}
-	return nil
+	return TrackerConfig{}, ErrInvalidConfig
 }
 
-func TransportConfigSFTP(transportName string) (*SFTPConfig, error) {
+func TransportConfigSFTP(transportName string) (SFTPConfig, error) {
 	v, ok := TransportSFTP[transportName]
 	if !ok {
-		return nil, errors.New("Invalid config key")
+		return SFTPConfig{}, errors.Wrapf(ErrInvalidConfig, "Invalid transport key: %v", transportName)
 	}
-	return &v, nil
+	return v, nil
 }
 
-func TransportConfigFile(transportName string) (*FileSystemConfig, error) {
+func TransportConfigFile(transportName string) (FileSystemConfig, error) {
 	v, ok := TransportFile[transportName]
 	if !ok {
-		return nil, errors.New("Invalid config key")
+		return FileSystemConfig{}, errors.Wrapf(ErrInvalidConfig, "Invalid transport key: %v", transportName)
 	}
-	return &v, nil
+	return v, nil
 }
 
 var (

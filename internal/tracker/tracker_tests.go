@@ -24,12 +24,15 @@ type TestData struct {
 	HashStr string
 }
 
+// TODO use transform.Format
 func replaceAuthToken(driverName string, s *parser.Result) {
 	if strings.Contains(s.LinkDL, AuthKeyToken) {
-		s.LinkDL = strings.Replace(s.LinkDL, AuthKeyToken, config.Tracker(driverName).Auth, 1)
+		c, _ := config.Tracker(driverName)
+		s.LinkDL = strings.Replace(s.LinkDL, AuthKeyToken, c.Auth, 1)
 	}
 	if strings.Contains(s.LinkDL, PasskeyToken) {
-		s.LinkDL = strings.Replace(s.LinkDL, PasskeyToken, config.Tracker(driverName).Passkey, 1)
+		c, _ := config.Tracker(driverName)
+		s.LinkDL = strings.Replace(s.LinkDL, PasskeyToken, c.Passkey, 1)
 	}
 }
 

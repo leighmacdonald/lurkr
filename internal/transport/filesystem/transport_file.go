@@ -11,7 +11,7 @@ import (
 )
 
 type fileTransport struct {
-	cfg *config.FileSystemConfig
+	cfg config.FileSystemConfig
 }
 
 func (t *fileTransport) Send(reader io.Reader, path string) error {
@@ -32,7 +32,7 @@ func (t *fileTransport) Send(reader io.Reader, path string) error {
 	return nil
 }
 
-func NewFileTransport(config *config.FileSystemConfig) (*fileTransport, error) {
+func NewFileTransport(config config.FileSystemConfig) (*fileTransport, error) {
 	return &fileTransport{
 		cfg: config,
 	}, nil

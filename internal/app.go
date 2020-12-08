@@ -21,34 +21,42 @@ import (
 var (
 	sourceIRC    map[string]*irc.Connection
 	sourcesIRCMU *sync.RWMutex
+	stopChan     chan bool
 )
 
 func Start(ctx context.Context) {
+	c, cancel := context.WithCancel(ctx)
 	for _, cfg := range config.Sources.IRC {
-		c := irc.New(ctx, cfg)
+		ircConn := irc.New(c, cfg)
 		go func() {
-			if err := c.Start(); err != nil {
+			if err := ircConn.Start(); err != nil {
 				log.Errorf(err.Error())
 			}
 		}()
 		sourcesIRCMU.Lock()
-		sourceIRC[cfg.Name] = c
+		sourceIRC[cfg.Name] = ircConn
 		sourcesIRCMU.Unlock()
 	}
 	for _, cfg := range config.Watch {
-		go filesystem.WatchDir(ctx, cfg.Path, func(path string) error {
+		go filesystem.WatchDir(c, cfg.Path, func(path string) error {
 			// TODO needed for race condition w/OS / file copy?
 			time.Sleep(2 * time.Second)
 			f, err := os.Open(path)
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() {
+				if errF := f.Close(); errF != nil {
+					log.Errorf("Failed to close file: %v", errF)
+				}
+			}()
 			fileName := filepath.Base(path)
 			return SendTransport(cfg.TransportType, cfg.TransportName, f, fileName)
 		})
 		log.Debugf("Watching files under %s", cfg.Path)
 	}
+	<-stopChan
+	cancel()
 }
 
 func Stop() {
@@ -57,6 +65,7 @@ func Stop() {
 	for _, conn := range sourceIRC {
 		conn.Stop()
 	}
+	stopChan <- true
 }
 
 func SendTransport(transportType config.TransportType, transportName string, reader io.Reader, path string) error {
@@ -66,9 +75,6 @@ func SendTransport(transportType config.TransportType, transportName string, rea
 		c, err := config.TransportConfigSFTP(transportName)
 		if err != nil {
 			return errors.Wrapf(transport.ErrInvalidTransport, "Invalid transport config format: %v", err)
-		}
-		if c == nil {
-			return errors.Wrapf(transport.ErrInvalidTransport, "Invalid transport name: %s", transportName)
 		}
 		trans, err2 := sftp.NewSFTPTransport(c)
 		if err2 != nil {
@@ -80,9 +86,6 @@ func SendTransport(transportType config.TransportType, transportName string, rea
 		c, err := config.TransportConfigFile(transportName)
 		if err != nil {
 			return errors.Wrapf(transport.ErrInvalidTransport, "Invalid transport config format: %v", err)
-		}
-		if c == nil {
-			return errors.Wrapf(transport.ErrInvalidTransport, "Invalid transport name: %s", transportName)
 		}
 		trans, err2 := filesystem_transport.NewFileTransport(c)
 		if err2 != nil {
@@ -100,4 +103,5 @@ func SendTransport(transportType config.TransportType, transportName string, rea
 func init() {
 	sourceIRC = make(map[string]*irc.Connection)
 	sourcesIRCMU = &sync.RWMutex{}
+	stopChan = make(chan bool)
 }

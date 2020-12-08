@@ -11,7 +11,7 @@ import (
 )
 
 type sftpTransport struct {
-	cfg    *config.SFTPConfig
+	cfg    config.SFTPConfig
 	client *sftp.Client
 }
 
@@ -27,7 +27,7 @@ func (t *sftpTransport) Send(reader io.Reader, path string) error {
 	return nil
 }
 
-func NewSFTPTransport(cfg *config.SFTPConfig) (*sftpTransport, error) {
+func NewSFTPTransport(cfg config.SFTPConfig) (*sftpTransport, error) {
 	var authMethods []ssh.AuthMethod
 	if cfg.Key != "" {
 		key, err := ioutil.ReadFile(cfg.Key)
@@ -51,7 +51,7 @@ func NewSFTPTransport(cfg *config.SFTPConfig) (*sftpTransport, error) {
 		}
 		authMethods = append(authMethods, ssh.PublicKeys(signer))
 	} else {
-		authMethods = append(authMethods, ssh.Password(string(cfg.Password)))
+		authMethods = append(authMethods, ssh.Password(cfg.Password))
 	}
 	conn, err := ssh.Dial("tcp", cfg.Address, &ssh.ClientConfig{
 		User: cfg.Username,
