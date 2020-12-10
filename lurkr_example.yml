@@ -1,6 +1,10 @@
 general:
   dry_run: true
   debug: false
+  download_dir:
+
+database:
+  dsn: "lurkr.db"
 
 log:
   level: debug
@@ -9,46 +13,135 @@ log:
   report_caller: false
   full_timestap: false
 
-transport_file: &default_transport
+api:
+  tmdb:
+    enabled: true
+    key: your_key
+
+transport_filesystem:
   default:
-    dest: /watch
+    path: /watch
 
 transport_sftp:
   default:
-    address: 10.0.0.1:22
-    username: username
+    address: 10.10.10.10:22
+    username: usernameauto
     password:
-    key: ~/.ssh/id_rsa
+    key: .ssh/test_priv_key.key
     path: /watch
 
+watch:
+  default:
+    path: z:/watch
+    transport_name: default
+    transport_type: sftp
+
+filters_music: &filters_music
+  tags_allowed: [ "deep.dubstep", "dub", "dubstep" ]
+  tags_excluded: [ "comics", "ebook" ]
+  min_size: 150 MB
+  max_size: 2 GB
+  formats_allowed: [ "flac" ]
+  formats_excluded: [ "mp3" ]
+  resolutions_allowed: [ "720p" ]
+  resolutions_excluded: [ "1080p" ]
+
+filters_tv: &filters_tv
+  titles_allowed: [ ]
+  titles_excluded: [ ]
+  tags_allowed: [ "deep.dubstep", "dub", "dubstep" ]
+  tags_excluded: [ "comics", "ebook" ]
+  min_size: 150 MB
+  max_size: 3 GB
+  formats_allowed: [ "flac" ]
+  formats_excluded: [ "mp3" ]
+  resolutions_allowed: [ "720p" ]
+  resolutions_excluded: [ "1080p", "2k", "uhd", "4k", "8k" ]
+  categories_allowed: [ "tv" ]
+  categories_excluded: [ ]
+  episodes_allowed: true
+  seasons_allowed: true
+  tmdb_min_score: 60
+
+default_transport: &default_transport
+  name: default
+  type: sftp
+
 sources:
-  irc:
-    - name: redacted
+  - name: unit3d
+    webhook:
+      key:
+  - name: redacted
+    auth:
       username: username
-      nick: nickname
-      password: "password"
-      address: irc.server.com:7000
+      auth: "xxx"
+    rss:
+      enabled: true
+      feeds: [
+          "https://redacted.ch/feeds.php?feed=torrents_music&user={username}&auth={auth}&passkey={passkey}&authkey={authkey}"
+      ]
+    irc:
+      enabled: true
+      nick: username
+      password: "xxx"
+      address: 10.10.10.10:8765
       ssl: true
       ssl_verify: false
       channels: [ "#red-announce" ]
       bot_name: Drone
       bot_who: Drone@127.0.0.1
-      auth: "your_api_key"
-      transport_name: default
-      transport_type: sftp
+    filters: *filters_music
+    transport: *default_transport
 
-    - name: revolutiontt
+  - name: revolutiontt
+    auth:
       username: username
-      nick: nick
-      password: "password"
-      address: irc.server.com:7000
+      auth: xxxx
+      passkey: "xxxx"
+    irc:
+      enabled: true
+      nick: name
+      password: "xxxx"
+      address: 10.10.10.10:8765
       ssl: true
       ssl_verify: false
-      channels: [ "#announce"]
+      channels: [ "#announce" ]
       bot_name: RevoTT
       bot_who: RevoTT@Revo.lutionTT
-      auth: "username:password"
-      transport_name: default
-      transport_type: file
+    filters: *filters_tv
+    transport: *default_transport
 
-  rss:
+  - name: broadcasthenet
+    auth:
+      username: name
+      auth: "xxxx"
+      passkey: "xxxx"
+    irc:
+      enabled: true
+      nick: username
+      password: ""
+      address: 10.10.10.10:8765
+      ssl: true
+      ssl_verify: false
+      channels: [ "#BTN-WhatAuto" ]
+      bot_name: Barney
+      bot_who: xxx@Barney.Bot.BroadcasThe.Net
+    filters: *filters_tv
+    transport: *default_transport
+
+  - name: torrentleech
+    auth:
+      username: name
+      auth: ""
+    irc:
+      enabled: true
+      nick: name
+      password: ""
+      address: 10.10.10.10.:8765
+      ssl: true
+      ssl_verify: false
+      channels: [ "#tlannounces" ]
+      bot_name: name
+      bot_who: username@torrentleech.org
+    filters: *filters_tv
+    transport: *default_transport

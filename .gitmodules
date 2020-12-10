@@ -1,0 +1,3 @@
+[submodule "extern/autodl-trackers"]
+	path = extern/autodl-trackers
+	url = https://github.com/autodl-community/autodl-trackers

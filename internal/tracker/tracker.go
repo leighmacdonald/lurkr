@@ -6,6 +6,7 @@ import (
 	"github.com/leighmacdonald/lurkr/internal/parser"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"sync"
 )
 
@@ -13,6 +14,9 @@ import (
 type Driver interface {
 	// ParseMessage parses an IRC announce message
 	ParseMessage(message string) (*parser.Result, error)
+
+	// ParseWebHook	will parse webhooks into our common parser.Result struct
+	ParseWebHook(body io.Reader) (*parser.Result, error)
 
 	// Download the raw .torrent file to send to the configured transport
 	Download(result *parser.Result) (*metainfo.MetaInfo, error)

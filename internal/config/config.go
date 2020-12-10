@@ -92,6 +92,10 @@ type RSSConfig struct {
 	Feeds   []string `mapstructure:"feeds"`
 }
 
+type WebhookConfig struct {
+	Key string `mapstructure:"key"`
+}
+
 type TransportConfig struct {
 	Name string        `mapstructure:"name"`
 	Type TransportType `mapstructure:"type"`
