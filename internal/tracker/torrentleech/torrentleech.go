@@ -22,7 +22,7 @@ var (
 )
 
 type Driver struct {
-	cfg    *config.TrackerConfig
+	cfg    config.TrackerConfig
 	client *http.Client
 }
 
@@ -39,6 +39,7 @@ func (p Driver) ParseMessage(message string) (*parser.Result, error) {
 	res.Category = parser.FindCategory(match[1], nil)
 	res.Tags = append(res.Tags, match[2])
 	release := releaseparser.Parse(match[3])
+	res.Release = match[3]
 	res.Name = release.Title
 	res.Episode = release.Episode
 	res.Season = release.Season
@@ -65,7 +66,7 @@ func (p Driver) Login() error {
 	return nil
 }
 
-func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return &Driver{
 		cfg: trackerConfig,
 		client: &http.Client{
@@ -75,7 +76,7 @@ func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
 
 type initializer struct{}
 
-func (i initializer) New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func (i initializer) New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return New(trackerConfig)
 }
 

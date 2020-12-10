@@ -4,7 +4,9 @@ go 1.15
 
 require (
 	github.com/anacrolix/torrent v1.18.1
+	github.com/cyruzin/golang-tmdb v1.3.2
 	github.com/cytec/releaseparser v0.0.0-20200706155913-2341b265c370
+	github.com/dustin/go-humanize v1.0.0
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -33,6 +35,8 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	gorm.io/driver/sqlite v1.1.4
+	gorm.io/gorm v1.20.8
 )
 
 replace github.com/thoj/go-ircevent v0.0.0-20190807115034-8e7ce4b5a1eb => github.com/leighmacdonald/go-ircevent v0.0.0-20201204201829-ba17dbbf95ee

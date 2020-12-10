@@ -23,7 +23,7 @@ type Driver struct {
 	baseURL  string
 	username string
 	password string
-	cfg      *config.TrackerConfig
+	cfg      config.TrackerConfig
 	client   *http.Client
 }
 
@@ -45,7 +45,9 @@ func (p Driver) ParseMessage(message string) (*parser.Result, error) {
 	result.Category = parser.FindCategory(tags[0], nil)
 	result.Tags = tags[1:]
 	result.LinkSite = args[2]
-	parsed := releaseparser.Parse(strings.Replace(args[0], "!new ", "", -1))
+	releaseName := strings.Replace(args[0], "!new ", "", -1)
+	parsed := releaseparser.Parse(releaseName)
+	result.Release = releaseName
 	result.Name = parsed.Title
 	if parsed.Year == 0 {
 		result.Year = transform.FindYear(parsed.Title)
@@ -57,7 +59,7 @@ func (p Driver) ParseMessage(message string) (*parser.Result, error) {
 		return nil, parser.ErrCannotParse
 	}
 	tID := u.Query().Get("id")
-	result.LinkDL = fmt.Sprintf("https://revolutiontt.me/download.php/%s?passkey=%s", tID, p.cfg.Passkey)
+	result.LinkDL = fmt.Sprintf("https://revolutiontt.me/download.php/%s?passkey=%s", tID, p.cfg.Auth.Passkey)
 	return result, nil
 }
 
@@ -83,8 +85,8 @@ func (p Driver) Login() error {
 	return nil
 }
 
-func New(cfg *config.TrackerConfig) (*Driver, error) {
-	userInfo := strings.SplitN(cfg.Auth, ":", 2)
+func New(cfg config.TrackerConfig) (*Driver, error) {
+	userInfo := strings.SplitN(cfg.Auth.AuthToken, ":", 2)
 	if len(userInfo) != 2 {
 		return nil, errors.Wrap(config.ErrInvalidConfig, "auth must be configured as username:password")
 	}
@@ -93,7 +95,7 @@ func New(cfg *config.TrackerConfig) (*Driver, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create cookiejar")
 	}
-	if cfg.Passkey == "" {
+	if cfg.Auth.Passkey == "" {
 		return nil, errors.Wrapf(config.ErrInvalidConfig, "Passkey must be set")
 	}
 	return &Driver{
@@ -109,7 +111,7 @@ func New(cfg *config.TrackerConfig) (*Driver, error) {
 
 type initializer struct{}
 
-func (i initializer) New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func (i initializer) New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return New(trackerConfig)
 }
 

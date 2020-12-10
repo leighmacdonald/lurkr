@@ -17,7 +17,7 @@ import (
 const driverName = "broadcasthenet"
 
 type Driver struct {
-	cfg    *config.TrackerConfig
+	cfg    config.TrackerConfig
 	client *http.Client
 }
 
@@ -40,7 +40,8 @@ func (p Driver) ParseMessage(message string) (*parser.Result, error) {
 	result.LinkSite = fmt.Sprintf("https://broadcasthe.net/torrents.php?torrentid=%d", tID)
 	result.LinkDL = fmt.Sprintf(
 		"https://broadcasthe.net/torrents.php?action=download&id=%d&authkey=%s&torrent_pass=%s",
-		tID, p.cfg.Auth, p.cfg.Passkey)
+		tID, p.cfg.Auth.AuthToken, p.cfg.Auth.Passkey)
+	result.Release = args[len(args)-1]
 	result.Group = parsed.Group
 	result.Category = parser.TV
 	result.Year = transform.ToInt(args[3])
@@ -59,7 +60,7 @@ func (p Driver) Login() error {
 	return nil
 }
 
-func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return &Driver{
 		cfg:    trackerConfig,
 		client: &http.Client{Timeout: time.Second * 10},
@@ -68,7 +69,7 @@ func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
 
 type initializer struct{}
 
-func (i initializer) New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func (i initializer) New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return New(trackerConfig)
 }
 

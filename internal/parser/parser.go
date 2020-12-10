@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/leighmacdonald/lurkr/internal/config"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -8,6 +9,7 @@ import (
 type Result struct {
 	Tracker    string
 	Name       string
+	Release    string
 	SubName    string
 	LinkSite   string
 	LinkDL     string
@@ -46,6 +48,11 @@ var (
 	ErrCannotParse   = errors.New("Failed to parse message")
 	ErrInvalidParser = errors.New("Invalid/Unknown Parser")
 )
+
+type Announce struct {
+	Parsed *Result
+	Cfg    config.TrackerConfig
+}
 
 func NewResult(driver string) *Result {
 	return &Result{

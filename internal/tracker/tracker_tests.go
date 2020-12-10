@@ -28,11 +28,11 @@ type TestData struct {
 func replaceAuthToken(driverName string, s *parser.Result) {
 	if strings.Contains(s.LinkDL, AuthKeyToken) {
 		c, _ := config.Tracker(driverName)
-		s.LinkDL = strings.Replace(s.LinkDL, AuthKeyToken, c.Auth, 1)
+		s.LinkDL = strings.Replace(s.LinkDL, AuthKeyToken, c.Auth.AuthToken, 1)
 	}
 	if strings.Contains(s.LinkDL, PasskeyToken) {
 		c, _ := config.Tracker(driverName)
-		s.LinkDL = strings.Replace(s.LinkDL, PasskeyToken, c.Passkey, 1)
+		s.LinkDL = strings.Replace(s.LinkDL, PasskeyToken, c.Auth.Passkey, 1)
 	}
 }
 

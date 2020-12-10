@@ -19,7 +19,7 @@ type Driver struct {
 	rxRelease *regexp.Regexp
 	client    *http.Client
 	baseURL   string
-	cfg       *config.TrackerConfig
+	cfg       config.TrackerConfig
 }
 
 func (p Driver) Name() string {
@@ -45,10 +45,10 @@ func (p Driver) Download(result *parser.Result) (*metainfo.MetaInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.cfg.Auth == "" {
+	if p.cfg.Auth.AuthToken == "" {
 		return nil, config.ErrInvalidAuth
 	}
-	req.Header.Set("Authorization", p.cfg.Auth)
+	req.Header.Set("Authorization", p.cfg.Auth.AuthToken)
 	resp, err2 := p.client.Do(req)
 	if err2 != nil {
 		return nil, err2
@@ -57,7 +57,9 @@ func (p Driver) Download(result *parser.Result) (*metainfo.MetaInfo, error) {
 	if err != nil {
 		return nil, tracker.ErrDownload
 	}
-	defer resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		log.Errorf("Failed to close download body: %v", err)
+	}
 	return mi, nil
 }
 
@@ -80,6 +82,7 @@ func (p Driver) ParseMessage(message string) (*parser.Result, error) {
 	if tId == "" {
 		return nil, parser.ErrCannotParse
 	}
+	result.Release = args[0] + " - " + args[1]
 	result.LinkDL = tId
 	result.Formats = transform.NormalizeStrings(strings.Split(args[2], "/"))
 	result.Tags = transform.NormalizeStrings(strings.Split(args[4], ","))
@@ -93,7 +96,7 @@ func (p Driver) ParseMessage(message string) (*parser.Result, error) {
 	return result, nil
 }
 
-func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return &Driver{
 		cfg:     trackerConfig,
 		baseURL: "https://redacted.ch/ajax.php",
@@ -108,7 +111,7 @@ func New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
 
 type initializer struct{}
 
-func (i initializer) New(trackerConfig *config.TrackerConfig) (tracker.Driver, error) {
+func (i initializer) New(trackerConfig config.TrackerConfig) (tracker.Driver, error) {
 	return New(trackerConfig)
 }
 

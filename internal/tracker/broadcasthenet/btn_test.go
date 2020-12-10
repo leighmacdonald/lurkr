@@ -36,7 +36,9 @@ var tests = []tracker.TestData{
 }
 
 func TestBroadcasthenet(t *testing.T) {
-	tkr, err := New(config.Tracker(driverName))
+	cfg, cfgErr := config.Tracker(driverName)
+	require.NoErrorf(t, cfgErr, "Invalid tracker name: %s", driverName)
+	tkr, err := New(cfg)
 	require.NoErrorf(t, err, "Invalid tracker configuration: %s", driverName)
 	tracker.TestTracker(t, tkr, tests)
 }

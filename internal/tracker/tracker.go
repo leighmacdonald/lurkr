@@ -25,7 +25,7 @@ type Driver interface {
 
 // Initializer will create the tracker driver instance with the provided config
 type Initializer interface {
-	New(*config.TrackerConfig) (Driver, error)
+	New(config.TrackerConfig) (Driver, error)
 }
 
 var (
@@ -44,7 +44,7 @@ func Register(name string, initializer Initializer) {
 }
 
 // New will instantiate the matching underlying drivers if it exists
-func New(trackerConfig *config.TrackerConfig) (Driver, error) {
+func New(trackerConfig config.TrackerConfig) (Driver, error) {
 	driversMu.RLock()
 	defer driversMu.RUnlock()
 	driver, found := drivers[trackerConfig.Name]

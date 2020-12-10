@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/dustin/go-humanize"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -22,16 +23,12 @@ const (
 
 type rootConfig struct {
 	General       GeneralConfig               `mapstructure:"general"`
+	Database      DatabaseConfig              `mapstrucutre:"database"`
 	Logs          LogConfig                   `mapstructure:"log"`
-	Source        SourcesConfig               `mapstructure:"sources"`
+	Trackers      []TrackerConfig             `mapstructure:"sources"`
 	Watch         map[string]WatchConfig      `mapstructure:"watch"`
 	TransportSFTP map[string]SFTPConfig       `mapstructure:"transport_sftp"`
 	TransportFile map[string]FileSystemConfig `mapstructure:"transport_file"`
-}
-
-type SourcesConfig struct {
-	IRC map[string]TrackerConfig `mapstructure:"irc"`
-	RSS map[string]TrackerConfig `mapstructure:"rss"`
 }
 
 type GeneralConfig struct {
@@ -65,16 +62,13 @@ type WatchConfig struct {
 	TransportType TransportType `mapstructure:"transport_type"`
 }
 
-type TrackerConfig struct {
-	// Name of the tracker, should match the driverName of the tracker
-	Name string `mapstructure:"name"`
+type IRCConfig struct {
+	Enabled bool `mapstructure:"enabled"`
 	// Nick is your IRC nick, usually the same as your username
 	Nick string `mapstructure:"nick"`
-	// Username is your site username
-	Username string `mapstructure:"username"`
 	// Password is your **IRC** password
 	Password string `mapstructure:"password"`
-	// Perform is a list of commands to run after connecting to IRC such as Nickserv identification, Invite bots, etc.
+	// Perform is a list of commands to run after connecting to IRC such as nickserv identification, Invite bots, etc.
 	Perform []string `mapstructure:"perform"`
 	Address string   `mapstructure:"address"`
 	// SSL enables SSL IRC Connections
@@ -87,21 +81,69 @@ type TrackerConfig struct {
 	BotName string `mapstructure:"bot_name"`
 	// BotWho is the whois info for the announce bot
 	BotWho string `mapstructure:"bot_who"`
-	// Auth can be several things depending on the tracker:
+}
+
+type DatabaseConfig struct {
+	DSN string `mapstructure:"dsn"`
+}
+
+type RSSConfig struct {
+	Enabled bool     `mapstructure:"enabled"`
+	Feeds   []string `mapstructure:"feeds"`
+}
+
+type TransportConfig struct {
+	Name string        `mapstructure:"name"`
+	Type TransportType `mapstructure:"type"`
+}
+
+type APIConfig struct {
+	TMDB struct {
+		Enabled bool   `mapstructure:"enabled"`
+		Key     string `mapstructure:"key"`
+	} `mapstructure:"tmdb"`
+}
+
+type FilterConfig struct {
+	TagsAllowed         []string `mapstructure:"tags_allowed"`
+	TagsExcluded        []string `mapstructure:"tags_excluded"`
+	MinSizeStr          string   `mapstructure:"min_size"`
+	MaxSizeStr          string   `mapstructure:"max_size"`
+	MinSize             uint64
+	MaxSize             uint64
+	FormatsAllowed      []string `mapstructure:"formats_allowed"`
+	FormatsExcluded     []string `mapstructure:"formats_excluded"`
+	ResolutionsAllowed  []string `mapstructure:"resolutions_allowed"`
+	ResolutionsExcluded []string `mapstructure:"resolutions_excluded"`
+	CategoriesAllowed   []string `mapstructure:"categories_allowed"`
+	CategoriesExcluded  []string `mapstructure:"categories_excluded"`
+	EpisodesAllowed     bool     `mapstructure:"episodes_allowed"`
+	SeasonsAllowed      bool     `mapstructure:"seasons_allowed"`
+	TMDBMinScore        float64  `mapstructure:"tmdb_min_score"`
+}
+
+type AuthConfig struct {
+	// Username is your site username
+	Username string `mapstructure:"username"`
+	// AuthToken can be several things depending on the tracker:
 	// username:password - for sites that dont have a real API, use your standard username and password when logging in
 	// api_key - For sites that provides a API for downloading
-	Auth string `mapstructure:"auth"`
+	AuthToken string `mapstructure:"auth"`
 	// Passkey is your torrent passkey, some sites require this when downloading the .torrent
 	Passkey string `mapstructure:"passkey"`
-	// TransportName should refer to one of the transport names defined in the config file
-	TransportName string `mapstructure:"transport_name"`
-	// TransportType should refer to one of the transport types defined in the config file
-	TransportType string   `mapstructure:"transport_type"`
-	RSSFeeds      []string `mapstructure:"rss_feeds"`
+}
+
+type TrackerConfig struct {
+	Name      string          `mapstructure:"name"`
+	Auth      AuthConfig      `mapstructure:"auth"`
+	IRC       IRCConfig       `mapstructure:"irc"`
+	RSS       RSSConfig       `mapstructure:"rss"`
+	Transport TransportConfig `mapstructure:"transport"`
+	Filters   FilterConfig    `mapstructure:"filters"`
 }
 
 func Tracker(tracker string) (TrackerConfig, error) {
-	for _, t := range Sources.IRC {
+	for _, t := range Trackers {
 		if strings.ToLower(t.Name) == strings.ToLower(tracker) {
 			return t, nil
 		}
@@ -131,18 +173,16 @@ var (
 		Debug: false,
 		Dry:   true,
 	}
-	Logs = LogConfig{
+	Database = DatabaseConfig{DSN: "lurkr.db"}
+	Logs     = LogConfig{
 		Level:          "info",
 		ForceColours:   false,
 		DisableColours: false,
 		ReportCaller:   false,
 		FullTimestamp:  false,
 	}
-	Sources = SourcesConfig{
-		IRC: nil,
-		RSS: nil,
-	}
-	Watch = map[string]WatchConfig{}
+	Trackers []TrackerConfig
+	Watch    = map[string]WatchConfig{}
 
 	TransportSFTP = map[string]SFTPConfig{}
 	TransportFile = map[string]FileSystemConfig{}
@@ -172,14 +212,38 @@ func Read(cfgFile string) error {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return errors.Wrapf(err, "Invalid config file format: %v", err)
 	}
+	if validationErr := validate(cfg); validationErr != nil {
+		log.Fatalf("Config failed validation: %v", validationErr)
+	}
 	General = cfg.General
+	Database = cfg.Database
 	Logs = cfg.Logs
-	Sources = cfg.Source
+	Trackers = cfg.Trackers
 	TransportSFTP = cfg.TransportSFTP
 	TransportFile = cfg.TransportFile
 	Watch = cfg.Watch
 	configureLogger(log.StandardLogger())
 	log.Infof("Using config file: %s", viper.ConfigFileUsed())
+	return nil
+}
+
+func validate(cfg rootConfig) error {
+	for _, t := range cfg.Trackers {
+		if t.Filters.MaxSizeStr != "" {
+			s, e := humanize.ParseBytes(t.Filters.MaxSizeStr)
+			if e != nil {
+				return errors.Errorf("Failed to parse max_size for %s: %v", t.Name, e)
+			}
+			t.Filters.MaxSize = s
+		}
+		if t.Filters.MinSizeStr != "" {
+			s, e := humanize.ParseBytes(t.Filters.MinSizeStr)
+			if e != nil {
+				return errors.Errorf("Failed to parse min_size for %s: %v", t.Name, e)
+			}
+			t.Filters.MinSize = s
+		}
+	}
 	return nil
 }
 

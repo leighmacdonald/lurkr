@@ -4,4 +4,5 @@
 /.ssh/
 /examples/
 /lurkr_test.yml
-/lurkr.exe
+*.exe
+*.db
